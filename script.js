@@ -147,7 +147,7 @@ const displacementSlider = function(opts) {
             mat.uniforms.nextImage.needsUpdate = true;
 
             if (window.updateChromeCubeTransition) {
-                window.updateChromeCubeTransition(sliderImages[slideId], duration);
+                window.updateChromeCubeTransition(sliderImages[slideId], duration, slideId);
             }
             if (window.rotateChromeCubeOnScroll) {
                 window.rotateChromeCubeOnScroll(prevSlide, slideId, duration);
@@ -334,7 +334,8 @@ const CUBE_TRANSITION_FRAGMENT = `
 `;
 
 let chromeScene, chromeCamera, chromeRenderer, chromeCube, chromePmremGenerator;
-let chromeEnvMap = null; // shared environment map for reflective GLTF model
+let chromeEnvMap = null; // current environment map
+let chromeSlideEnvMaps = []; // env map per slide
 // Base Y rotation (tweened on scroll); cursor follow adds on top
 let chromeCubeBase = { y: 0 };
 let chromeCubeMouseX = 0;
@@ -342,8 +343,10 @@ let chromeCubeMouseY = 0;
 // Smoothed values for fluid cursor follow (eased toward mouse targets)
 let chromeCubeEasedX = 0;
 let chromeCubeEasedY = 0;
+// Current slide texture applied to cube and transition progress (0→1→0)
+let chromeCurrentSlideTex = null;
+let chromeSlideEffect = { p: 0 };
 
-// ✅ Accepts sliderImages as a parameter (unused now) — kept for API compatibility
 function initChromeCube(sliderImages) {
     const width = window.innerWidth || document.documentElement.clientWidth;
     const height = window.innerHeight || document.documentElement.clientHeight;
@@ -369,30 +372,56 @@ function initChromeCube(sliderImages) {
     chromeRenderer.domElement.style.pointerEvents = "none";
     document.body.appendChild(chromeRenderer.domElement);
 
-    // Environment map for reflections on the GLTF box (like forth-concept)
+    // Environment maps for reflections per slide (3 background images)
     const envTexLoader = new THREE.TextureLoader();
-    envTexLoader.load(
-        'Edge_Tower.jpg.jpeg',
-        function (texture) {
-            texture.mapping = THREE.EquirectangularReflectionMapping;
-            texture.encoding = THREE.sRGBEncoding;
-            texture.minFilter = THREE.LinearFilter;
-            texture.magFilter = THREE.LinearFilter;
+    const envSlidePaths = ['Edge_Tower.jpg.jpeg', 'TRG_AquaBar.jpg', 'TTG_Living.jpg.jpeg'];
 
-            if (typeof THREE.PMREMGenerator !== 'undefined') {
-                const pmremGen = new THREE.PMREMGenerator(chromeRenderer);
-                pmremGen.compileEquirectangularShader();
-                chromeEnvMap = pmremGen.fromEquirectangular(texture).texture;
-                texture.dispose();
-                pmremGen.dispose();
-            } else {
-                chromeEnvMap = texture;
-            }
+    if (typeof THREE.PMREMGenerator !== 'undefined') {
+        const pmremGen = new THREE.PMREMGenerator(chromeRenderer);
+        pmremGen.compileEquirectangularShader();
 
-            chromeScene.environment = chromeEnvMap;
-            applyEnvMapToChromeModel(chromeCube);
-        }
-    );
+        envSlidePaths.forEach(function (path, idx) {
+            envTexLoader.load(
+                path,
+                function (texture) {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    texture.encoding = THREE.sRGBEncoding;
+                    texture.minFilter = THREE.LinearFilter;
+                    texture.magFilter = THREE.LinearFilter;
+
+                    const env = pmremGen.fromEquirectangular(texture).texture;
+                    texture.dispose();
+                    chromeSlideEnvMaps[idx] = env;
+
+                    // Use first slide env map as initial environment
+                    if (idx === 0) {
+                        chromeEnvMap = env;
+                        chromeScene.environment = chromeEnvMap;
+                        applyEnvMapToChromeModel(chromeCube);
+                    }
+                }
+            );
+        });
+    } else {
+        envSlidePaths.forEach(function (path, idx) {
+            envTexLoader.load(
+                path,
+                function (texture) {
+                    texture.mapping = THREE.EquirectangularReflectionMapping;
+                    texture.encoding = THREE.sRGBEncoding;
+                    texture.minFilter = THREE.LinearFilter;
+                    texture.magFilter = THREE.LinearFilter;
+
+                    chromeSlideEnvMaps[idx] = texture;
+                    if (idx === 0) {
+                        chromeEnvMap = texture;
+                        chromeScene.environment = chromeEnvMap;
+                        applyEnvMapToChromeModel(chromeCube);
+                    }
+                }
+            );
+        });
+    }
 
     // Load external 3D box model (box4.glb) instead of procedural cube
     const loader = new THREE.GLTFLoader();
@@ -435,9 +464,9 @@ function initChromeCube(sliderImages) {
                         mat.side = THREE.FrontSide;
                         mat.transparent = false;
                         mat.opacity = 1.0;
-                        // Remove baked-in tint
+                        // Neutral base color so reflections and textures are not tinted
                         if ('color' in mat) mat.color.set(0xffffff);
-                        // Soften reflections to avoid strong yellow cast
+                        // Make the cube more reflective and less rough for clearer reflections
                         if ('metalness' in mat) mat.metalness = 0.9;
                         if ('roughness' in mat) mat.roughness = 0.9;
                         if ('envMapIntensity' in mat) mat.envMapIntensity = 1.6;
@@ -447,6 +476,11 @@ function initChromeCube(sliderImages) {
 
             chromeScene.add(chromeCube);
             applyEnvMapToChromeModel(chromeCube);
+
+            // After cube is ready, apply the first slide as reflection/surface
+            if (sliderImages && sliderImages.length > 0 && window.updateChromeCubeTransition) {
+                window.updateChromeCubeTransition(sliderImages[0], 0.1, 0);
+            }
         },
         undefined,
         function (error) {
@@ -482,10 +516,43 @@ function onChromeCubeMouseMove(e) {
     chromeCubeMouseY = -nx * 1.2;   // yaw offset (left/right)
 }
 
-window.updateChromeCubeTransition = function (tex, durationSeconds) {
-    // Keep object image/reflection constant; only background slider changes.
-    // Intentionally do nothing here.
-    return;
+window.updateChromeCubeTransition = function (tex, durationSeconds, slideId) {
+    if (!chromeCube || !tex || durationSeconds <= 0) return;
+
+    chromeCurrentSlideTex = tex;
+
+    // Use the slide's dedicated env map (if loaded) for reflections.
+    chromeCube.traverse(function (child) {
+        if (child.isMesh && child.material) {
+            const mats = Array.isArray(child.material) ? child.material : [child.material];
+            mats.forEach(function (mat) {
+                if (!mat.userData) mat.userData = {};
+                if (mat.userData.baseEnvIntensity === undefined && 'envMapIntensity' in mat) {
+                    mat.userData.baseEnvIntensity = mat.envMapIntensity;
+                }
+
+                // Pick env map for this slide (fallback to first / current)
+                var envForSlide = (typeof slideId === 'number' && chromeSlideEnvMaps[slideId])
+                    ? chromeSlideEnvMaps[slideId]
+                    : (chromeEnvMap || chromeSlideEnvMaps[0]);
+
+                if (envForSlide && 'envMap' in mat) {
+                    mat.envMap = envForSlide;
+                    mat.needsUpdate = true;
+                }
+            });
+        }
+    });
+
+    // Animate a 0→1→0 envelope in chromeSlideEffect.p,
+    // reusing the same overall duration as the background transition.
+    chromeSlideEffect.p = 0;
+    TweenLite.to(chromeSlideEffect, durationSeconds / 2, {
+        p: 1,
+        ease: 'Power2.easeInOut',
+        yoyo: true,
+        repeat: 1
+    });
 };
 
 // Set the cube's map to the slide texture (instant, no transition)
@@ -519,6 +586,26 @@ function animateChromeCube() {
         chromeCubeEasedY += (chromeCubeMouseY - chromeCubeEasedY) * ease;
         chromeCube.rotation.x = chromeCubeEasedX;
         chromeCube.rotation.y = chromeCubeBase.y + chromeCubeEasedY;
+
+        // Apply the same 0→1→0 envelope as a smooth reflection strength change
+        // so the cube's reflections "breathe" in sync with the background effect.
+        var mid = 1.0 - Math.abs(2.0 * chromeSlideEffect.p - 1.0); // 0→1→0
+        chromeCube.traverse(function (child) {
+            if (child.isMesh && child.material) {
+                const mats = Array.isArray(child.material) ? child.material : [child.material];
+                mats.forEach(function (mat) {
+                    if ('envMapIntensity' in mat) {
+                        if (!mat.userData) mat.userData = {};
+                        var base = mat.userData.baseEnvIntensity !== undefined
+                            ? mat.userData.baseEnvIntensity
+                            : mat.envMapIntensity || 1.0;
+                        mat.userData.baseEnvIntensity = base;
+                        // Pulse between base and base + 0.4
+                        mat.envMapIntensity = base + mid * 0.4;
+                    }
+                });
+            }
+        });
     }
 
     if (chromeRenderer && chromeScene && chromeCamera) {
