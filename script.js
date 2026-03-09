@@ -50,6 +50,18 @@ const displacementSlider = function(opts) {
     let parent = opts.parent;
     let dispMap;
 
+    let isMobile = window.matchMedia && window.matchMedia('(max-width: 800px)').matches;
+    function getMobileImageSrc(desktopSrc) {
+        if (!desktopSrc || desktopSrc.indexOf('_mob') !== -1) return desktopSrc;
+        return desktopSrc.replace(/^(.+)(\.[^.]+)$/, '$1_mob$2');
+    }
+    if (isMobile) {
+        images.forEach(function (img) {
+            var src = img.getAttribute('src');
+            if (src) img.setAttribute('src', getMobileImageSrc(src));
+        });
+    }
+
     let renderW = window.innerWidth || document.documentElement.clientWidth;
     let renderH = window.innerHeight || document.documentElement.clientHeight;
 
@@ -249,17 +261,42 @@ const displacementSlider = function(opts) {
             else if (e.deltaY < 0) goToSlide(currentSlide - 1);
         }, { passive: false });
 
-        parent.addEventListener('touchstart', function(e) {
-            touchStartX = e.touches[0].clientX;
+        // Mobile swipe: use document so we get touches even when they hit overlay content.
+        // Only treat as swipe if the touch started inside the slider.
+        let touchStartedOnSlider = false;
+        let touchStartY = 0;
+
+        document.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 0) return;
+            if (parent.contains(e.target)) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                touchStartedOnSlider = true;
+            }
         }, { passive: true });
 
-        parent.addEventListener('touchend', function(e) {
-            if (e.changedTouches.length === 0) return;
+        document.addEventListener('touchmove', function(e) {
+            if (!touchStartedOnSlider || e.touches.length === 0) return;
+            var dx = Math.abs(e.touches[0].clientX - touchStartX);
+            var dy = Math.abs(e.touches[0].clientY - touchStartY);
+            // If clearly vertical, prevent scroll so our touchend swipe is recognized
+            if (dy > 20 && dy > dx) e.preventDefault();
+        }, { passive: false });
+
+        document.addEventListener('touchend', function(e) {
+            if (!touchStartedOnSlider || e.changedTouches.length === 0) return;
+            touchStartedOnSlider = false;
+            if (isAnimating) return;
             let touchEndX = e.changedTouches[0].clientX;
+            let touchEndY = e.changedTouches[0].clientY;
             let deltaX = touchStartX - touchEndX;
-            const minSwipe = 60;
-            if (deltaX > minSwipe) goToSlide(currentSlide + 1);
-            else if (deltaX < -minSwipe) goToSlide(currentSlide - 1);
+            let deltaY = touchStartY - touchEndY;
+            const minSwipe = 50;
+            // Only react to clearly vertical swipes (for 'vertical scroll' to change slide)
+            if (Math.abs(deltaY) < minSwipe) return;
+            if (Math.abs(deltaX) > Math.abs(deltaY)) return; // let horizontal moves pass
+            if (deltaY > 0) goToSlide(currentSlide + 1);  // swipe up → next
+            else goToSlide(currentSlide - 1);             // swipe down → previous
         }, { passive: true });
 
     };
@@ -416,7 +453,7 @@ function initChromeCube(sliderImages) {
 
     // Environment maps for reflections per slide (3 background images)
     const envTexLoader = new THREE.TextureLoader();
-    const envSlidePaths = ['Edge_Tower.jpg.jpeg', 'TRG_AquaBar.jpeg', 'TTG_Living.jpg.jpeg'];
+    const envSlidePaths = ['Edge_Tower.jpeg', 'TRG_AquaBar.jpeg', 'TTG_Living.jpeg'];
 
     if (typeof THREE.PMREMGenerator !== 'undefined') {
         const pmremGen = new THREE.PMREMGenerator(chromeRenderer);

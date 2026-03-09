@@ -339,6 +339,11 @@ main {
 	}
 }
 
+@media screen and (max-width: 1500px) {
+	.change_i{
+		left: 100PX;
+	}
+}
 @media screen and (max-width: 800px) {
 	#pagination{
 		display: none;

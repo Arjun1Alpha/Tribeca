@@ -489,6 +489,11 @@ main {
     transform: scale3d(0.5, 0.5, 1);
   }
 }
+@media screen and (max-width: 1500px) {
+  .change_i {
+    left: 100PX;
+  }
+}
 @media screen and (max-width: 800px) {
   #pagination {
     display: none;
@@ -500,5 +505,24 @@ main {
      <img> backgrounds (with object-fit: cover) fill 100% width/height. */
   #slider canvas {
     display: none;
+  }
+  #slider {
+    /* Force background images to true cover: full viewport, cropped properly */
+  }
+  #slider img {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    -o-object-fit: cover;
+       object-fit: cover;
+    -o-object-position: center center;
+       object-position: center center;
+    z-index: 0;
+  }
+  main {
+    min-height: 100vh;
+    min-height: 100dvh;
   }
 }/*# sourceMappingURL=stylex.css.map */
