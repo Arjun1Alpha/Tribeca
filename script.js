@@ -17,11 +17,6 @@ const displacementSlider = function(opts) {
     uniform float dispFactor;
     uniform float intensity;
 
-    // Simple hash-based random for GLSL
-    float rand(vec2 co) {
-        return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
-    }
-
     void main() {
         vec2 uv = vUv;
 
@@ -33,10 +28,7 @@ const displacementSlider = function(opts) {
         // and zero at the start (0.0) and end (1.0).
         float mid = 1.0 - abs(2.0 * dispFactor - 1.0); // 0→1→0 curve
 
-        // Add some randomness per-pixel so the motion feels less linear
-        float jitter = 0.7 + 0.3 * rand(uv + dispFactor * 10.0); // 0.7–1.0 range
-
-        float strength = intensity * mid * jitter;
+        float strength = intensity * mid;
 
         vec2 distortedFrom = uv + dispVec * strength * (1.0 - dispFactor);
         vec2 distortedTo   = uv - dispVec * strength * dispFactor;
@@ -76,7 +68,7 @@ const displacementSlider = function(opts) {
 
     // Displacement texture used to mimic theme-6 hover-effect style
     // (same as data-displacement="img/displacement/1.jpg" in the demo)
-    dispMap = loader.load('hover-effect/example/img/displacement/1.jpg');
+    dispMap = loader.load('../displacement/1.jpg');
     dispMap.magFilter = dispMap.minFilter = THREE.LinearFilter;
 
     let scene = new THREE.Scene();
@@ -105,8 +97,8 @@ const displacementSlider = function(opts) {
             currentImage: { type: "t", value: sliderImages[0] },
             nextImage:    { type: "t", value: sliderImages[1] },
             dispMap:      { type: "t", value: dispMap },
-            // Slightly lower intensity so effect is subtler
-            intensity:    { type: "f", value: -0.25 }
+            // Even lower intensity for a lighter, smoother effect
+            intensity:    { type: "f", value: -0.12 }
         },
         vertexShader: vertex,
         fragmentShader: fragment,
