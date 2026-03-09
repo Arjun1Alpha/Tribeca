@@ -13,95 +13,35 @@ const displacementSlider = function(opts) {
 
     uniform sampler2D currentImage;
     uniform sampler2D nextImage;
+    uniform sampler2D dispMap;
     uniform float dispFactor;
-
-    float rand(vec2 co) {
-        return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
-    }
-
-    float noise(vec2 p) {
-        vec2 i = floor(p);
-        vec2 f = fract(p);
-        f = f * f * (3.0 - 2.0 * f);
-        float a = rand(i);
-        float b = rand(i + vec2(1.0, 0.0));
-        float c = rand(i + vec2(0.0, 1.0));
-        float d = rand(i + vec2(1.0, 1.0));
-        return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-    }
-
-    // Signed distance to a line defined by two points
-    float lineDist(vec2 p, vec2 a, vec2 b) {
-        vec2 pa = p - a, ba = b - a;
-        float h = clamp(dot(pa, ba) / dot(ba, ba), 0.0, 1.0);
-        return length(pa - ba * h);
-    }
-
-    // Returns 0.0 on a triangle edge, 1.0 away from it
-    float triangleGrid(vec2 uv, float scale, float lineWidth) {
-        vec2 g = uv * scale;
-
-        // Aspect-correct pixel size for line width
-        float pw = lineWidth;
-
-        vec2 cell  = floor(g);
-        vec2 local = fract(g);               // 0..1 inside each square cell
-
-        // Every cell contains two triangles:
-        //   upper-left  triangle: (0,0)→(1,0)→(0,1)  — upward pointing
-        //   lower-right triangle: (1,0)→(1,1)→(0,1)  — downward pointing
-        // We draw ALL six edges of both triangles so we get the full grid.
-
-        // --- edges of the upward triangle ---
-        float d = 1.0;
-        d = min(d, lineDist(local, vec2(0.0,0.0), vec2(1.0,0.0))); // bottom
-        d = min(d, lineDist(local, vec2(0.0,0.0), vec2(0.0,1.0))); // left
-        d = min(d, lineDist(local, vec2(1.0,0.0), vec2(0.0,1.0))); // hypotenuse
-
-        // --- edges of the downward triangle (shares hypotenuse) ---
-        d = min(d, lineDist(local, vec2(1.0,0.0), vec2(1.0,1.0))); // right
-        d = min(d, lineDist(local, vec2(0.0,1.0), vec2(1.0,1.0))); // top
-
-        // Smooth anti-aliased stroke
-        return 1.0 - smoothstep(pw * 0.5, pw * 1.5, d);
-    }
+    uniform float intensity;
 
     void main() {
         vec2 uv = vUv;
-        // Zoom background image around the center by 1.5x
-        float zoom = 0.8;
-        uv = (uv - 0.5) * zoom + 0.5;
-        float t = smoothstep(0.0, 1.0, dispFactor);
 
-        // ── noise-based reveal field (same as before) ──
-        float n  = noise(uv * 4.0)  * 0.5;
-        n += noise(uv * 8.0)  * 0.25;
-        n += noise(uv * 16.0) * 0.125;
-        n += noise(uv * 32.0) * 0.0625;
-        float reveal = n;
+        // Displacement map sample (Codrops-style)
+        vec4 disp = texture2D(dispMap, uv);
+        vec2 dispVec = disp.rg * 2.0 - 1.0;
 
-        float edgeGrain = (rand(uv * 220.0) - 0.5) * 0.12
-                        + (rand(uv * 470.0 + 0.5) - 0.5) * 0.06;
+        // Make distortion strongest in the middle of the transition
+        // and zero at the start (0.0) and end (1.0).
+        float mid = 1.0 - abs(2.0 * dispFactor - 1.0); // 0→1→0 curve
+        float strength = intensity * mid;
 
-        // ── triangle grid overlay driving the mask ──
-        // scale ~30 gives roughly the same cell density as the image
-        float grid = triangleGrid(uv, 30.0, 0.03);
+        vec2 distortedFrom = uv + dispVec * strength * (1.0 - dispFactor);
+        vec2 distortedTo   = uv - dispVec * strength * dispFactor;
 
-        // Weave the grid into the reveal field so transition
-        // "wipes" along triangle edges
-        reveal += edgeGrain * 0.8 + grid * 0.06;
+        vec4 fromTex = texture2D(currentImage, distortedFrom);
+        vec4 toTex   = texture2D(nextImage,   distortedTo);
 
-        float mask = smoothstep(reveal - 0.14, reveal + 0.14, t);
-
-        vec4 fromTex     = texture2D(currentImage, uv);
-        vec4 toTex       = texture2D(nextImage,    uv);
-        vec4 finalTexture = mix(fromTex, toTex, mask);
-        gl_FragColor = finalTexture;
+        gl_FragColor = mix(fromTex, toTex, dispFactor);
     }
 `;
 
     let images = opts.images, image, sliderImages = [];
     let parent = opts.parent;
+    let dispMap;
 
     let renderW = window.innerWidth || document.documentElement.clientWidth;
     let renderH = window.innerHeight || document.documentElement.clientHeight;
@@ -124,6 +64,11 @@ const displacementSlider = function(opts) {
         image.anisotropy = renderer.capabilities.getMaxAnisotropy();
         sliderImages.push( image );
     });
+
+    // Displacement texture used to mimic theme-6 hover-effect style
+    // (same as data-displacement="img/displacement/1.jpg" in the demo)
+    dispMap = loader.load('hover-effect/example/img/displacement/1.jpg');
+    dispMap.magFilter = dispMap.minFilter = THREE.LinearFilter;
 
     let scene = new THREE.Scene();
     let camera = new THREE.OrthographicCamera(
@@ -150,6 +95,9 @@ const displacementSlider = function(opts) {
             dispFactor:   { type: "f", value: 0.0 },
             currentImage: { type: "t", value: sliderImages[0] },
             nextImage:    { type: "t", value: sliderImages[1] },
+            dispMap:      { type: "t", value: dispMap },
+            // Match theme-6 intensity (~-0.4) from the Codrops example
+            intensity:    { type: "f", value: -0.4 }
         },
         vertexShader: vertex,
         fragmentShader: fragment,
@@ -185,7 +133,8 @@ const displacementSlider = function(opts) {
             let prevSlide = currentSlide;
             currentSlide = slideId;
 
-            const duration = 5.5;
+            // Slightly faster slide/displacement animation
+            const duration = 3.0;
 
             document.getElementById('pagination').querySelectorAll('.active')[0].className = '';
             pagButtons[slideId].className = 'active';
@@ -602,35 +551,6 @@ imagesLoaded( document.querySelectorAll('img'), () => {
     // ✅ Capture returned sliderImages and pass directly into initChromeCube
     const slider = new displacementSlider({ parent: el, images: imgs });
     initChromeCube(slider.sliderImages);
-
-    // --- Codrops-style hover displacement effect (like 3rd example) ---
-    // This will look for any blocks structured like the demo:
-    // <div class="grid__item-img"
-    //      data-displacement="img/displacement/4.png"
-    //      data-intensity="0.2"
-    //      data-speedIn="1.6"
-    //      data-speedOut="1.6">
-    //   <img src="img/Img23.jpg">
-    //   <img src="img/Img24.jpg">
-    // </div>
-    if (typeof hoverEffect !== 'undefined') {
-        Array.from(document.querySelectorAll('.grid__item-img')).forEach((el) => {
-            const hoverImgs = Array.from(el.querySelectorAll('img'));
-            if (hoverImgs.length < 2) return;
-
-            new hoverEffect({
-                parent: el,
-                intensity: el.dataset.intensity || undefined,
-                speedIn: el.dataset.speedin || undefined,
-                speedOut: el.dataset.speedout || undefined,
-                easing: el.dataset.easing || undefined,
-                hover: el.dataset.hover || undefined,
-                image1: hoverImgs[0].getAttribute('src'),
-                image2: hoverImgs[1].getAttribute('src'),
-                displacementImage: el.dataset.displacement
-            });
-        });
-    }
 
 });
 
