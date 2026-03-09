@@ -71,7 +71,7 @@ const displacementSlider = function(opts) {
 
     // Displacement texture used to mimic theme-6 hover-effect style
     // (same as data-displacement="img/displacement/1.jpg" in the demo)
-    dispMap = loader.load('../displacement/1.jpg');
+    dispMap = loader.load('displacement/1.jpg');
     dispMap.magFilter = dispMap.minFilter = THREE.LinearFilter;
 
     let scene = new THREE.Scene();
