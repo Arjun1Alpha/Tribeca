@@ -24,18 +24,21 @@ const displacementSlider = function(opts) {
         vec4 disp = texture2D(dispMap, uv);
         vec2 dispVec = disp.rg * 2.0 - 1.0;
 
-        // Make distortion strongest in the middle of the transition
-        // and zero at the start (0.0) and end (1.0).
-        float mid = 1.0 - abs(2.0 * dispFactor - 1.0); // 0→1→0 curve
-
+        // Distortion envelope: 0 → 1 → 0 over the course of the transition
+        float mid = 1.0 - abs(2.0 * dispFactor - 1.0); // 0→1→0
         float strength = intensity * mid;
 
-        vec2 distortedFrom = uv + dispVec * strength * (1.0 - dispFactor);
-        vec2 distortedTo   = uv - dispVec * strength * dispFactor;
+        // Slight tilt so motion feels like flowing water
+        vec2 flowDir = normalize(vec2(0.6, 1.0));
+        vec2 flow = dot(dispVec, flowDir) * flowDir;
+
+        vec2 distortedFrom = uv + flow * strength * (1.0 - dispFactor);
+        vec2 distortedTo   = uv - flow * strength * dispFactor;
 
         vec4 fromTex = texture2D(currentImage, distortedFrom);
         vec4 toTex   = texture2D(nextImage,   distortedTo);
 
+        // Opacity of new image still goes 0 → 1 linearly
         gl_FragColor = mix(fromTex, toTex, dispFactor);
     }
 `;
