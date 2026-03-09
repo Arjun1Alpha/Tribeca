@@ -15,22 +15,27 @@
 
 			<div class="slider-inner">
 				<div id="slider-content">
-					<div class="meta">Project</div>
-					<h2 id="slide-title">Edge <br>Tower</h2>
-					<span data-slide-title="0">Edge <br>Tower</span>
-					<span data-slide-title="1">TRG <br>Aqua Bar</span>
-					<span data-slide-title="2">TTG <br>Living</span>
-					<div class="meta">Developer</div>
-					<div id="slide-status">Tribeca Group</div>
-					<span data-slide-status="0">Tribeca Group</span>
-					<span data-slide-status="1">Tribeca Group</span>
-					<span data-slide-status="2">Tribeca Group</span>
+					<!-- Main animated slide title (used by JS/GSAP) -->
+					<h2 id="slide-title" style="float: left;position: absolute;left: 200px;top: 300px;">Trophy <br> Properties</h2>
+					<!-- Static tagline on the right; we just hide/show this, no text swapping -->
+					<h2 id="slide-tagline" style="float: right;position: absolute;right: 200px;">Endured for <br>Generations.</h2>
+
+					<!-- Per-slide titles used as sources for #slide-title content -->
+					<span data-slide-title="0">Trophy <br> Properties</span>
+					<span data-slide-title="1">Designed with <br>Deliberate <br> Intent.</span>
+					<span data-slide-title="2">Details <br> Preceding <br>Expressions.</span>
+
+					<div class="meta"></div>
+					<div id="slide-status"></div>
+					<span data-slide-status="0"></span>
+					<span data-slide-status="1"></span>
+					<span data-slide-status="2"></span>
 				</div>
 			</div>
 
 			<!-- Background images -->
 			<img src="./Edge_Tower.jpg.jpeg" />
-			<img src="./TRG_AquaBar.jpg" />
+			<img src="./TRG_AquaBar.jpeg" />
 			<img src="./TTG_Living.jpg.jpeg" />
 
 			<div id="pagination">

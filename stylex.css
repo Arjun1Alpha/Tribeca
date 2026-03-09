@@ -1,5 +1,4 @@
 @charset "UTF-8";
-@import url("https://use.typekit.net/euz1eqv.css");
 article, aside, details, figcaption, figure, footer, header, hgroup, main, nav, section, summary {
   display: block;
 }
@@ -306,6 +305,16 @@ main {
   position: relative;
   overflow: hidden;
 }
+#slider ::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to left, rgba(35, 39, 42, 0), rgba(0, 0, 0, 0.04));
+  z-index: -1;
+}
 #slider canvas {
   width: 100%;
   height: 100%;
@@ -348,11 +357,11 @@ main {
   letter-spacing: -1px;
   color: white;
   line-height: 30px;
-  margin: 20px 0 60px;
+  margin: 20px 0 0px;
 }
 @media screen and (min-width: 800px) {
   #slider-content h2 {
-    font-size: 110px;
+    font-size: clamp(3rem, 2.35rem + 3.25vw, 6.25rem);
     line-height: 100px;
   }
 }
@@ -379,8 +388,8 @@ main {
   position: absolute;
   top: 5px;
   right: -55px;
-  width: 45px;
-  height: 2px;
+  width: 0px;
+  height: 0px;
   background-color: #393d40;
 }
 #slider-content #slide-status {
@@ -478,5 +487,18 @@ main {
   to {
     opacity: 1;
     transform: scale3d(0.5, 0.5, 1);
+  }
+}
+@media screen and (max-width: 800px) {
+  #pagination {
+    display: none;
+  }
+  .cube-canvas {
+    transform: scale(0.7);
+  }
+  /* On mobile, hide WebGL displacement canvas so the underlying
+     <img> backgrounds (with object-fit: cover) fill 100% width/height. */
+  #slider canvas {
+    display: none;
   }
 }/*# sourceMappingURL=stylex.css.map */

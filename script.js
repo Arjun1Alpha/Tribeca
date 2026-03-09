@@ -16,8 +16,11 @@ const displacementSlider = function(opts) {
     uniform sampler2D dispMap;
     uniform float dispFactor;
     uniform float intensity;
+    uniform vec2 resolution;
 
     void main() {
+        // Use plain UVs so the WebGL image is not stretched.
+        // On mobile the canvas is hidden and CSS <img> handles cover.
         vec2 uv = vUv;
 
         // Displacement map sample (Codrops-style)
@@ -101,7 +104,8 @@ const displacementSlider = function(opts) {
             nextImage:    { type: "t", value: sliderImages[1] },
             dispMap:      { type: "t", value: dispMap },
             // Even lower intensity for a lighter, smoother effect
-            intensity:    { type: "f", value: -0.12 }
+            intensity:    { type: "f", value: -0.12 },
+            resolution:   { type: "v2", value: new THREE.Vector2(renderW, renderH) }
         },
         vertexShader: vertex,
         fragmentShader: fragment,
@@ -137,6 +141,9 @@ const displacementSlider = function(opts) {
             let prevSlide = currentSlide;
             currentSlide = slideId;
 
+            // On mobile (canvas hidden), show only the background image for this slide
+            syncBackgroundImages();
+
             // Slightly faster slide/displacement animation
             const duration = 3.0;
 
@@ -166,6 +173,7 @@ const displacementSlider = function(opts) {
 
             let slideTitleEl = document.getElementById('slide-title');
             let slideStatusEl = document.getElementById('slide-status');
+            let slideTaglineEl = document.getElementById('slide-tagline');
             let nextSlideTitle = document.querySelectorAll(`[data-slide-title="${slideId}"]`)[0].innerHTML;
             let nextSlideStatus = document.querySelectorAll(`[data-slide-status="${slideId}"]`)[0].innerHTML;
 
@@ -179,11 +187,40 @@ const displacementSlider = function(opts) {
 
             TweenLite.to( slideTitleEl, duration * 0.5, { autoAlpha: 1, y: 0, delay: duration * 0.45, ease: 'Power2.easeOut' });
             TweenLite.to( slideStatusEl, duration * 0.5, { autoAlpha: 1, y: 0, delay: duration * 0.5, ease: 'Power2.easeOut' });
+
+            // Tagline: visible only on slide 0, hidden on other slides.
+            // Reveal order: main title first, then tagline.
+            if (slideTaglineEl) {
+                if (slideId === 0) {
+                    // Delay tagline so it starts after the main title has faded in
+                    TweenLite.to(slideTaglineEl, duration * 0.35, {
+                        autoAlpha: 1,
+                        delay: duration * 0.6,
+                        ease: 'Power2.easeOut'
+                    });
+                } else {
+                    // Hide tagline quickly when leaving slide 0
+                    TweenLite.to(slideTaglineEl, duration * 0.2, {
+                        autoAlpha: 0,
+                        ease: 'Power2.easeIn'
+                    });
+                }
+            }
         }
 
         // Expose slide changer globally so other UI (e.g. hover blocks)
         // can trigger WebGL background transitions.
         window.displacementGoToSlide = goToSlide;
+
+        // Keep background <img> in sync with current slide (for mobile when canvas is hidden)
+        function syncBackgroundImages() {
+            let bgImgs = parent.querySelectorAll('#slider > img');
+            for (let i = 0; i < bgImgs.length; i++) {
+                bgImgs[i].style.opacity = (i === currentSlide) ? '1' : '0';
+                bgImgs[i].style.pointerEvents = (i === currentSlide) ? 'auto' : 'none';
+            }
+        }
+        syncBackgroundImages(); // init: show first slide image
 
         pagButtons.forEach( (el) => {
             el.addEventListener('click', function() {
@@ -238,6 +275,9 @@ const displacementSlider = function(opts) {
         camera.top = renderH / 2;
         camera.bottom = renderH / -2;
         camera.updateProjectionMatrix();
+        if (mat.uniforms.resolution) {
+            mat.uniforms.resolution.value.set(renderW, renderH);
+        }
     });
 
     let animate = function() {
@@ -368,13 +408,15 @@ function initChromeCube(sliderImages) {
     chromeRenderer.domElement.style.position = "fixed";
     chromeRenderer.domElement.style.top = "0";
     chromeRenderer.domElement.style.left = "0";
-    chromeRenderer.domElement.style.zIndex = "6";
+    // Behind text (#slider-content, z-index: 5) but above background
+    chromeRenderer.domElement.style.zIndex = "4";
     chromeRenderer.domElement.style.pointerEvents = "none";
+    chromeRenderer.domElement.classList.add("cube-canvas");
     document.body.appendChild(chromeRenderer.domElement);
 
     // Environment maps for reflections per slide (3 background images)
     const envTexLoader = new THREE.TextureLoader();
-    const envSlidePaths = ['Edge_Tower.jpg.jpeg', 'TRG_AquaBar.jpg', 'TTG_Living.jpg.jpeg'];
+    const envSlidePaths = ['Edge_Tower.jpg.jpeg', 'TRG_AquaBar.jpeg', 'TTG_Living.jpg.jpeg'];
 
     if (typeof THREE.PMREMGenerator !== 'undefined') {
         const pmremGen = new THREE.PMREMGenerator(chromeRenderer);
