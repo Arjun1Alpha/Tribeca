@@ -17,6 +17,11 @@ const displacementSlider = function(opts) {
     uniform float dispFactor;
     uniform float intensity;
 
+    // Simple hash-based random for GLSL
+    float rand(vec2 co) {
+        return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+    }
+
     void main() {
         vec2 uv = vUv;
 
@@ -27,7 +32,11 @@ const displacementSlider = function(opts) {
         // Make distortion strongest in the middle of the transition
         // and zero at the start (0.0) and end (1.0).
         float mid = 1.0 - abs(2.0 * dispFactor - 1.0); // 0→1→0 curve
-        float strength = intensity * mid;
+
+        // Add some randomness per-pixel so the motion feels less linear
+        float jitter = 0.7 + 0.3 * rand(uv + dispFactor * 10.0); // 0.7–1.0 range
+
+        float strength = intensity * mid * jitter;
 
         vec2 distortedFrom = uv + dispVec * strength * (1.0 - dispFactor);
         vec2 distortedTo   = uv - dispVec * strength * dispFactor;
@@ -96,8 +105,8 @@ const displacementSlider = function(opts) {
             currentImage: { type: "t", value: sliderImages[0] },
             nextImage:    { type: "t", value: sliderImages[1] },
             dispMap:      { type: "t", value: dispMap },
-            // Match theme-6 intensity (~-0.4) from the Codrops example
-            intensity:    { type: "f", value: -0.4 }
+            // Slightly lower intensity so effect is subtler
+            intensity:    { type: "f", value: -0.25 }
         },
         vertexShader: vertex,
         fragmentShader: fragment,
