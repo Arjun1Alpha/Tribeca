@@ -341,7 +341,10 @@ main {
 
 @media screen and (max-width: 1500px) {
 	.change_i{
-		left: 100PX;
+		left: 100px !important;
+	}
+	.change_z{
+		right: 100px !important;
 	}
 }
 @media screen and (max-width: 800px) {
