@@ -579,6 +579,11 @@ function initChromeCube(sliderImages) {
 
     window.addEventListener("resize", onChromeResize, false);
     window.addEventListener("mousemove", onChromeCubeMouseMove, false);
+
+    // On mobile, also drive the cube with device orientation (tilt)
+    if (window.DeviceOrientationEvent && window.matchMedia && window.matchMedia('(max-width: 800px)').matches) {
+        window.addEventListener('deviceorientation', onChromeCubeDeviceOrientation, true);
+    }
     animateChromeCube();
 }
 
@@ -596,6 +601,8 @@ window.rotateChromeCubeOnScroll = function (prevSlide, slideId, durationSeconds)
 
 // Cursor follow: update target tilt from mouse position (object leans toward cursor)
 function onChromeCubeMouseMove(e) {
+    // Ignore mousemove on small/mobile viewports; deviceorientation will drive the cube instead
+    if (window.matchMedia && window.matchMedia('(max-width: 800px)').matches) return;
     var w = window.innerWidth || document.documentElement.clientWidth;
     var h = window.innerHeight || document.documentElement.clientHeight;
     var nx = (e.clientX / w) - 0.5;  // -0.5 .. 0.5
@@ -603,6 +610,23 @@ function onChromeCubeMouseMove(e) {
     // Move mouse up -> tilt cube up; move right -> rotate cube right
     chromeCubeMouseX = ny * 1.2;    // pitch (up/down)
     chromeCubeMouseY = -nx * 1.2;   // yaw offset (left/right)
+}
+
+// Mobile: drive cube with device motion (tilt phone)
+function onChromeCubeDeviceOrientation(event) {
+    if (!event) return;
+    // On many devices: beta = front/back tilt (-180..180), gamma = left/right tilt (-90..90)
+    var beta = event.beta || 0;   // x-axis
+    var gamma = event.gamma || 0; // y-axis
+
+    // Limit to a comfortable range so small hand movements give nice motion, not jitter
+    var maxTilt = 45;
+    var nx = THREE.MathUtils.clamp(gamma / maxTilt, -1, 1); // -1..1 left/right
+    var ny = THREE.MathUtils.clamp(beta / maxTilt, -1, 1);  // -1..1 up/down
+
+    // Tilt phone forward/back → cube pitch; tilt left/right → yaw, slightly reduced for subtle feel
+    chromeCubeMouseX = -ny * 0.8;
+    chromeCubeMouseY = -nx * 0.8;
 }
 
 window.updateChromeCubeTransition = function (tex, durationSeconds, slideId) {
