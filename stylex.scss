@@ -16,7 +16,10 @@ article,aside,details,figcaption,figure,footer,header,hgroup,main,nav,section,su
 }
 
 // @import url("https://use.typekit.net/euz1eqv.css");
-
+@font-face {
+	font-family: "fino-sans";
+	src: url("Fino-Sans.otf") format("opentype");
+  }
 html {
 	background: #fff;
 	-moz-osx-font-smoothing: grayscale;
@@ -71,7 +74,7 @@ header {
 		display: none;
 
 		a {
-			font-family: 'Arial', serif;
+			font-family: 'fino-sans', serif;
 			font-size: 12px;
 			color: #8c8c8e;
 			text-transform: uppercase;
@@ -117,7 +120,7 @@ header {
 		position: absolute;
 		right: 10px;
 		top: 27px;
-		font-family: 'Arial', sans-serif;
+		font-family: 'fino-sans', sans-serif;
 		font-size: 12px;
 		color: white;
 		text-transform: uppercase;
@@ -141,16 +144,16 @@ main {
 	margin: 0 auto;
 	position: relative;
 	overflow: hidden;
-	::after{
-		content: '';
-		position: absolute;
-		top: 0;
-		left: 0;
-		width: 100%;
-		height: 100%;
-		background:linear-gradient(to left, rgb(35 39 42 / 0%), rgb(0 0 0 / 4%));
-		z-index: -1;
-	}
+	// ::after{
+	// 	content: '';
+	// 	position: absolute;
+	// 	top: 0;
+	// 	left: 0;
+	// 	width: 100%;
+	// 	height: 100%;
+	// 	background:linear-gradient(to left, rgb(35 39 42 / 0%), rgb(0 0 0 / 4%));
+	// 	z-index: -1;
+	// }
 	canvas {
 		width: 100%;
 		height: 100%;
@@ -189,27 +192,30 @@ main {
 	padding: 0 10px;
 
 	h2 {
-		font-family: 'acta-display', serif;
+		font-family: 'fino-sans', serif;
 		font-weight: 400;
-		font-size: 30px;
+		// font-size: 30px;
 		letter-spacing: -1px;
 		color: white;
-		line-height: 30px;
+		// line-height: 30px;
 		margin: 20px 0 0px;
 
-		@media screen and (min-width: 800px) {
+		// @media screen and (min-width: 800px) {
+		// 	line-height: 100px;
+		// }
+		// @media screen and (min-width: 800px) {
+			line-height: 1;
 			font-size: clamp(3rem, 2.35rem + 3.25vw, 6.25rem);
-			line-height: 100px;
-		}
+		// }
 	}
 
-	span {
+	.hidee {
 		display: none;
 	}
 
 	.meta {
 		display: inline-block;
-		font-family: 'Arial', sans-serif;
+		font-family: 'fino-sans', sans-serif;
 		font-size: 11px;
 		letter-spacing: 5px;
 		color: #88888a;
@@ -234,7 +240,7 @@ main {
 
 	#slide-status {
 		margin-top: 10px;
-		font-family: 'acta-display', serif;
+		font-family: 'fino-sans', serif;
 		font-weight: 400;
 		font-size: 18px;
 		color: white;
@@ -376,5 +382,48 @@ main {
 	main {
 		min-height: 100vh;
 		min-height: 100dvh;
+	}
+}
+
+@media screen and (max-width: 800px) {
+	.big_text{
+		font-size: 70px !important;
+
+	}
+	.slide_tenure{
+		margin-left: 70px;
+	}
+	.slide_tenure_second{
+		margin-left: 220px;
+	}
+	.change_i{
+		top: 60px !important;
+		left: 40px !important;
+		font-size: 50px !important;
+	}
+
+	.change_z{
+		right: 40px !important;
+		top: 210px !important;
+		font-size: 50px !important;
+	}
+	#slider-content[data-slide-index="1"],
+	#slider-content[data-slide-index="2"] {
+		#slide-title {
+			top: auto !important;
+			bottom: 40px !important;
+			left: 20px !important;
+		}
+		#slide-status {
+			position: absolute;
+			bottom: 90px;
+			left: 20px;
+			margin-top: 0;
+		}
+		.meta {
+			position: absolute;
+			bottom: 130px;
+			left: 20px;
+		}
 	}
 }
