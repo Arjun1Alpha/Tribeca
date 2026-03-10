@@ -507,6 +507,8 @@ function initChromeCube(sliderImages) {
 
     // Load external 3D box model (box4.glb) instead of procedural cube
     const loader = new THREE.GLTFLoader();
+    let isMobile = window.matchMedia && window.matchMedia('(max-width: 800px)').matches;
+
     loader.load(
         'box4.glb',
         function (gltf) {
@@ -530,8 +532,13 @@ function initChromeCube(sliderImages) {
             //     chromeCube.scale.setScalar(scale);
             // }
             const maxDim = Math.max(size.x, size.y, size.z);
+            let distance = 4.5;
             if (maxDim > 0) {
-                const distance = 4.5;
+                if (isMobile) {
+                     distance = 4.0;
+                }else{
+                     distance = 4.5;
+                }
                 const fov = chromeCamera.fov * (Math.PI / 180);
                 const visibleHeight = 2 * Math.tan(fov / 2) * distance;
                 const scale = (visibleHeight * 0.4) / maxDim;
