@@ -621,8 +621,10 @@ function onChromeCubeDeviceOrientation(event) {
 
     // Limit to a comfortable range so small hand movements give nice motion, not jitter
     var maxTilt = 45;
-    var nx = THREE.MathUtils.clamp(gamma / maxTilt, -1, 1); // -1..1 left/right
-    var ny = THREE.MathUtils.clamp(beta / maxTilt, -1, 1);  // -1..1 up/down
+    // Shift beta so that when the phone is held vertically (portrait), we treat that as neutral (front-facing cube)
+    var betaShifted = beta - 90;
+    var nx = THREE.MathUtils.clamp(gamma / maxTilt, -1, 1);        // -1..1 left/right
+    var ny = THREE.MathUtils.clamp(betaShifted / maxTilt, -1, 1);  // -1..1 up/down, centered at vertical
 
     // Tilt phone forward/back → cube pitch; tilt left/right → yaw, slightly reduced for subtle feel
     chromeCubeMouseX = -ny * 0.8;
