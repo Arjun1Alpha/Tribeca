@@ -423,6 +423,9 @@ let chromeCubeEasedY = 0;
 // Current slide texture applied to cube and transition progress (0→1→0)
 let chromeCurrentSlideTex = null;
 let chromeSlideEffect = { p: 0 };
+// Smooth cube env-map transition (same duration as background): 0 → 1 over slide duration
+let chromeCubeTransitionProgress = { value: 0 };
+let chromeCubeTransitionTarget = { envMap: null };
 
 function initChromeCube(sliderImages) {
     const width = window.innerWidth || document.documentElement.clientWidth;
@@ -600,37 +603,34 @@ window.updateChromeCubeTransition = function (tex, durationSeconds, slideId) {
 
     chromeCurrentSlideTex = tex;
 
-    // Use the slide's dedicated env map (if loaded) for reflections.
+    var envForSlide = (typeof slideId === 'number' && chromeSlideEnvMaps[slideId])
+        ? chromeSlideEnvMaps[slideId]
+        : (chromeEnvMap || chromeSlideEnvMaps[0]);
+
+    if (!envForSlide) return;
+
+    // Store target env map and run smooth transition (fade out → swap → fade in)
+    chromeCubeTransitionTarget.envMap = envForSlide;
+    chromeCubeTransitionProgress.value = 0;
     chromeCube.traverse(function (child) {
         if (child.isMesh && child.material) {
             const mats = Array.isArray(child.material) ? child.material : [child.material];
             mats.forEach(function (mat) {
                 if (!mat.userData) mat.userData = {};
+                mat.userData.envMapTransitionSwitched = false;
                 if (mat.userData.baseEnvIntensity === undefined && 'envMapIntensity' in mat) {
                     mat.userData.baseEnvIntensity = mat.envMapIntensity;
-                }
-
-                // Pick env map for this slide (fallback to first / current)
-                var envForSlide = (typeof slideId === 'number' && chromeSlideEnvMaps[slideId])
-                    ? chromeSlideEnvMaps[slideId]
-                    : (chromeEnvMap || chromeSlideEnvMaps[0]);
-
-                if (envForSlide && 'envMap' in mat) {
-                    mat.envMap = envForSlide;
-                    mat.needsUpdate = true;
                 }
             });
         }
     });
 
-    // Animate a 0→1→0 envelope in chromeSlideEffect.p,
-    // reusing the same overall duration as the background transition.
-    chromeSlideEffect.p = 0;
-    TweenLite.to(chromeSlideEffect, durationSeconds / 2, {
-        p: 1,
+    TweenLite.to(chromeCubeTransitionProgress, durationSeconds, {
+        value: 1,
         ease: 'Power2.easeInOut',
-        yoyo: true,
-        repeat: 1
+        onComplete: function () {
+            chromeCubeTransitionProgress.value = 0;
+        }
     });
 };
 
@@ -666,21 +666,36 @@ function animateChromeCube() {
         chromeCube.rotation.x = chromeCubeEasedX;
         chromeCube.rotation.y = chromeCubeBase.y + chromeCubeEasedY;
 
-        // Apply the same 0→1→0 envelope as a smooth reflection strength change
-        // so the cube's reflections "breathe" in sync with the background effect.
-        var mid = 1.0 - Math.abs(2.0 * chromeSlideEffect.p - 1.0); // 0→1→0
+        // Apply smooth env-map transition (fade out → swap → fade in) or idle pulse
+        var progress = chromeCubeTransitionProgress.value;
         chromeCube.traverse(function (child) {
             if (child.isMesh && child.material) {
                 const mats = Array.isArray(child.material) ? child.material : [child.material];
                 mats.forEach(function (mat) {
-                    if ('envMapIntensity' in mat) {
-                        if (!mat.userData) mat.userData = {};
+                    if (!('envMapIntensity' in mat)) return;
+                    if (!mat.userData) mat.userData = {};
+                    if (progress > 0 && progress < 1) {
+                        var base = mat.userData.baseEnvIntensity !== undefined
+                            ? mat.userData.baseEnvIntensity
+                            : (mat.envMapIntensity || 1.0);
+                        var minSilver = 1.0; // never fade to black; stay light silver during transition
+                        if (progress < 0.5) {
+                            mat.envMapIntensity = base + (minSilver - base) * (progress * 2);
+                        } else {
+                            if (!mat.userData.envMapTransitionSwitched && chromeCubeTransitionTarget.envMap) {
+                                mat.envMap = chromeCubeTransitionTarget.envMap;
+                                mat.userData.envMapTransitionSwitched = true;
+                                mat.needsUpdate = true;
+                            }
+                            mat.envMapIntensity = minSilver + (base - minSilver) * ((progress - 0.5) * 2);
+                        }
+                    } else {
+                        if (mat.userData.envMapTransitionSwitched) mat.userData.envMapTransitionSwitched = false;
+                        var mid = 1.0 - Math.abs(2.0 * chromeSlideEffect.p - 1.0);
                         var base = mat.userData.baseEnvIntensity !== undefined
                             ? mat.userData.baseEnvIntensity
                             : mat.envMapIntensity || 1.0;
-                        mat.userData.baseEnvIntensity = base;
-                        // Pulse between base and base + 0.4
-                        mat.envMapIntensity = base + mid * 0.4;
+                        mat.envMapIntensity = base + mid * 0.2;
                     }
                 });
             }
