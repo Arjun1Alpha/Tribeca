@@ -490,6 +490,8 @@ main {
     display: none;
   }
   .cube-canvas {
+    /* Slightly smaller and pushed a bit down on mobile */
+    top: 12% !important;
     transform: scale(0.7);
   }
   /* On mobile, hide WebGL displacement canvas so the underlying
