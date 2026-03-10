@@ -596,7 +596,10 @@ function initChromeCube(sliderImages) {
 
 // Ask for permission (iOS) and attach deviceorientation listener for cube
 function enableChromeCubeOrientation() {
-    if (!window.DeviceOrientationEvent) return;
+    if (!window.DeviceOrientationEvent) {
+        alert('Device motion is not available on this device/browser.');
+        return;
+    }
 
     // iOS 13+ requires explicit permission request
     if (typeof DeviceOrientationEvent.requestPermission === 'function') {
@@ -604,10 +607,13 @@ function enableChromeCubeOrientation() {
             .then(function (response) {
                 if (response === 'granted') {
                     window.addEventListener('deviceorientation', onChromeCubeDeviceOrientation, true);
+                } else {
+                    alert('To move the cube with your device, please enable \"Motion & Orientation Access\" for Safari in iOS Settings, then reload this page.');
                 }
             })
             .catch(function (err) {
                 console.warn('Device orientation permission error:', err);
+                alert('Device motion permission was blocked. Please enable motion access in your iOS settings and reload the page.');
             });
     } else {
         // Other browsers: just attach listener
@@ -635,9 +641,9 @@ function onChromeCubeMouseMove(e) {
     var h = window.innerHeight || document.documentElement.clientHeight;
     var nx = (e.clientX / w) - 0.5;  // -0.5 .. 0.5
     var ny = (e.clientY / h) - 0.5;
-    // Move mouse up -> tilt cube up; move right -> rotate cube right
+    // Move mouse up -> tilt cube up; move right -> rotate cube right (toward cursor)
     chromeCubeMouseX = ny * 1.2;    // pitch (up/down)
-    chromeCubeMouseY = -nx * 1.2;   // yaw offset (left/right)
+    chromeCubeMouseY = nx * 1.2;    // yaw offset (left/right), same side as cursor
 }
 
 // Mobile: drive cube with device motion (tilt phone)
@@ -656,7 +662,7 @@ function onChromeCubeDeviceOrientation(event) {
 
     // Tilt phone forward/back → cube pitch; tilt left/right → yaw, slightly reduced for subtle feel
     chromeCubeMouseX = -ny * 0.8;
-    chromeCubeMouseY = -nx * 0.8;
+    chromeCubeMouseY = nx * 0.8;
 }
 
 window.updateChromeCubeTransition = function (tex, durationSeconds, slideId) {
@@ -797,6 +803,38 @@ imagesLoaded( document.querySelectorAll('img'), () => {
     // ✅ Capture returned sliderImages and pass directly into initChromeCube
     const slider = new displacementSlider({ parent: el, images: imgs });
     initChromeCube(slider.sliderImages);
+
+    // On mobile/iOS, show a small button to explicitly enable motion control for the cube.
+    if (window.matchMedia && window.matchMedia('(max-width: 800px)').matches && window.DeviceOrientationEvent) {
+        var btnId = 'enable-motion-btn';
+        if (!document.getElementById(btnId)) {
+            var b = document.createElement('button');
+            b.id = btnId;
+            b.textContent = 'Enable motion control';
+            b.type = 'button';
+            b.style.position = 'fixed';
+            b.style.left = '50%';
+            b.style.bottom = '20px';
+            b.style.transform = 'translateX(-50%)';
+            b.style.zIndex = '100001';
+            b.style.padding = '10px 16px';
+            b.style.border = 'none';
+            b.style.borderRadius = '999px';
+            b.style.fontSize = '13px';
+            b.style.letterSpacing = '0.06em';
+            b.style.textTransform = 'uppercase';
+            b.style.background = 'rgba(0,0,0,0.75)';
+            b.style.color = '#fff';
+            b.style.cursor = 'pointer';
+            b.onclick = function () {
+                if (typeof enableChromeCubeOrientation === 'function') {
+                    enableChromeCubeOrientation();
+                }
+                b.parentNode.removeChild(b);
+            };
+            document.body.appendChild(b);
+        }
+    }
 
 });
 
