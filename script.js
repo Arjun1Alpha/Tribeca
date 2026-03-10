@@ -580,11 +580,39 @@ function initChromeCube(sliderImages) {
     window.addEventListener("resize", onChromeResize, false);
     window.addEventListener("mousemove", onChromeCubeMouseMove, false);
 
-    // On mobile, also drive the cube with device orientation (tilt)
-    if (window.DeviceOrientationEvent && window.matchMedia && window.matchMedia('(max-width: 800px)').matches) {
+    // On mobile, enable device orientation control after a user gesture (required on iOS)
+    if (window.matchMedia && window.matchMedia('(max-width: 800px)').matches) {
+        var enableOrientationOnce = function () {
+            enableChromeCubeOrientation();
+            window.removeEventListener('touchstart', enableOrientationOnce);
+            window.removeEventListener('click', enableOrientationOnce);
+        };
+        window.addEventListener('touchstart', enableOrientationOnce, { passive: true });
+        window.addEventListener('click', enableOrientationOnce);
+    }
+
+    animateChromeCube();
+}
+
+// Ask for permission (iOS) and attach deviceorientation listener for cube
+function enableChromeCubeOrientation() {
+    if (!window.DeviceOrientationEvent) return;
+
+    // iOS 13+ requires explicit permission request
+    if (typeof DeviceOrientationEvent.requestPermission === 'function') {
+        DeviceOrientationEvent.requestPermission()
+            .then(function (response) {
+                if (response === 'granted') {
+                    window.addEventListener('deviceorientation', onChromeCubeDeviceOrientation, true);
+                }
+            })
+            .catch(function (err) {
+                console.warn('Device orientation permission error:', err);
+            });
+    } else {
+        // Other browsers: just attach listener
         window.addEventListener('deviceorientation', onChromeCubeDeviceOrientation, true);
     }
-    animateChromeCube();
 }
 
 // Rotate cube 360° on Y when slide changes (scroll/click); same duration as transition
