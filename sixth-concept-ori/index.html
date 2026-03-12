@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="stylex.css">
+</head>
+<body class="loading">
+
+
+
+	<main>
+		<div id="slider">
+
+			<div class="slider-inner">
+				<div id="slider-content">
+					<!-- Main animated slide title (used by JS/GSAP) -->
+					<h2 class="change_i" id="slide-title" style="float: left;position: absolute;left: 80px;top: 30%;max-width: 800px;">Trophy   <br>Properties <br> Endured  for <br>  Generations.</h2>
+
+					<!-- Per-slide titles used as sources for #slide-title content -->
+					<span data-slide-title="0">Trophy   <br>Properties <br> Endured  for <br>  Generations.</span>
+					<span data-slide-title="1">Designed with <br>Deliberate <br> Intent.</span>
+					<span data-slide-title="2">Details <br> Preceding <br>Expressions.</span>
+
+					<div class="meta"></div>
+					<div id="slide-status"></div>
+					<span data-slide-status="0"></span>
+					<span data-slide-status="1"></span>
+					<span data-slide-status="2"></span>
+				</div>
+			</div>
+
+			<!-- Background images -->
+			<img src="./Edge_Tower.jpeg" />
+			<img src="./TRG_AquaBar.jpeg" />
+			<img src="./TTG_Living.jpeg" />
+
+			<div id="pagination">
+				<button class="active" data-slide="0"></button>
+				<button data-slide="1"></button>
+				<button data-slide="2"></button>
+			</div>
+
+		</div>
+	</main>
+    <!-- Three.js + loaders from jsDelivr (matching version 0.128.0) -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery.imagesloaded/4.1.4/imagesloaded.pkgd.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.20.4/TweenMax.min.js"></script>
+    <script src="script.js"></script>
+
+	</body>
+</html>
